@@ -5,15 +5,42 @@ if (!$link) {
     exit('Erro na conexão com o banco.');
 }
 
-$sql = "SELECT DISTINCT nome FROM votos";
-$result = mysqli_query($link, $sql);
+// Primeiro, busca todos os nomes únicos dos projetos
+$sql_nomes = "SELECT DISTINCT nome FROM votos";
+$result_nomes = mysqli_query($link, $sql_nomes);
 
 // Verifica se a consulta retornou resultados
-if (mysqli_num_rows($result) > 0) {
-    // Exibe os nomes únicos dos projetos
-    while ($row = mysqli_fetch_assoc($result)) {
-        echo "Projeto: " . $row["nome"] . "<br>";
+$ranking = [];
+
+if (mysqli_num_rows($result_nomes) > 0) {
+    // Para cada projeto, calcula a soma dos votos
+    while ($row = mysqli_fetch_assoc($result_nomes)) {
+        $nomeProjeto = $row["nome"];
+
+        // Consulta para somar os votos de um projeto específico
+        $sql_soma = "SELECT SUM(voto) AS total FROM votos WHERE nome = '" . mysqli_real_escape_string($link, $nomeProjeto) . "'";
+        $result_soma = mysqli_query($link, $sql_soma);
+        $soma = mysqli_fetch_assoc($result_soma)["total"];
+
+        // Armazena no array de ranking
+        $ranking[] = [
+            "nome" => $nomeProjeto,
+            "total" => $soma
+        ];
     }
+
+    // Ordena o ranking por total de votos (decrescente)
+    usort($ranking, function($a, $b) {
+        return $b["total"] - $a["total"];
+    });
+
+    // Exibe o ranking
+    $posicao = 1;
+    foreach ($ranking as $item) {
+        echo "🏆 " . $posicao . "º lugar - Projeto: " . $item["nome"] . " | Total de pontos: " . $item["total"] . "<br>";
+        $posicao++;
+    }
+
 } else {
     echo "Nenhum nome encontrado.";
 }
